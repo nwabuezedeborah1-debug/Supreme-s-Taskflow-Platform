@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Task, TaskStats, CreateTaskDTO, UpdateTaskDTO, FilterState } from '../types.ts';
 import { taskApi } from '../api/taskApi';
 import { demoTasks } from '../data/demoTasks.ts';
 
-// Compute stats from a task array
 const computeStats = (tasks: Task[]): TaskStats => {
   const now = new Date();
   return {
@@ -17,87 +16,99 @@ const computeStats = (tasks: Task[]): TaskStats => {
   };
 };
 
+const applyFilters = (all: Task[], filters: FilterState): Task[] => {
+  let result = [...all];
+  if (filters.status !== 'all') result = result.filter((t) => t.status === filters.status);
+  if (filters.priority !== 'all') result = result.filter((t) => t.priority === filters.priority);
+  if (filters.category !== 'all') result = result.filter((t) => t.category === filters.category);
+  if (filters.search.trim()) {
+    const q = filters.search.toLowerCase();
+    result = result.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(q))
+    );
+  }
+  const field = filters.sortBy as keyof Task;
+  const dir = filters.order === 'asc' ? 1 : -1;
+  result.sort((a, b) => {
+    const av = String((a[field] as string) ?? '');
+    const bv = String((b[field] as string) ?? '');
+    return av < bv ? -dir : av > bv ? dir : 0;
+  });
+  return result;
+};
+
 export const useTasks = (filters: FilterState) => {
+  // ── mode flag — set once, never oscillates
+  const [demoMode, setDemoMode] = useState(false);
+  const demoModeRef = useRef(false);
+
+  // ── raw unfiltered local store (demo mode)
+  const [localTasks, setLocalTasks] = useState<Task[]>(demoTasks);
+
+  // ── displayed tasks & stats (derived from either API or local)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
 
-  // Local in-memory store for demo mode
-  const [localTasks, setLocalTasks] = useState<Task[]>(demoTasks);
-
-  const buildParams = useCallback((): Record<string, string> => {
-    const params: Record<string, string> = {};
-    if (filters.status !== 'all') params.status = filters.status;
-    if (filters.priority !== 'all') params.priority = filters.priority;
-    if (filters.category !== 'all') params.category = filters.category;
-    if (filters.search.trim()) params.search = filters.search.trim();
-    params.sortBy = filters.sortBy;
-    params.order = filters.order;
-    return params;
-  }, [filters]);
-
-  // Apply client-side filters to local tasks when in demo mode
-  const filterLocalTasks = useCallback((all: Task[]): Task[] => {
-    let result = [...all];
-    if (filters.status !== 'all') result = result.filter((t) => t.status === filters.status);
-    if (filters.priority !== 'all') result = result.filter((t) => t.priority === filters.priority);
-    if (filters.category !== 'all') result = result.filter((t) => t.category === filters.category);
-    if (filters.search.trim()) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(
-        (t) => t.title.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(q))
-      );
-    }
-    result.sort((a, b) => {
-      const field = filters.sortBy as keyof Task;
-      const av = (a[field] as string) ?? '';
-      const bv = (b[field] as string) ?? '';
-      return filters.order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-    return result;
-  }, [filters]);
-
-  const fetchTasks = useCallback(async () => {
+  // ── initial API fetch — runs once on mount
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    setError(null);
+    Promise.all([taskApi.getAll(), taskApi.getStats()])
+      .then(([taskData, statsData]) => {
+        if (cancelled) return;
+        setDemoMode(false);
+        demoModeRef.current = false;
+        setLocalTasks(taskData); // store API data as the local source too
+        setStats(statsData);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDemoMode(true);
+        demoModeRef.current = true;
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── re-derive displayed tasks whenever localTasks or filters change
+  useEffect(() => {
+    setTasks(applyFilters(localTasks, filters));
+  }, [localTasks, filters]);
+
+  // ── keep stats in sync with local tasks
+  useEffect(() => {
+    setStats(computeStats(localTasks));
+  }, [localTasks]);
+
+  const refetch = useCallback(async () => {
+    if (demoModeRef.current) return; // no backend — skip
+    setLoading(true);
     try {
-      const [taskData, statsData] = await Promise.all([
-        taskApi.getAll(buildParams()),
-        taskApi.getStats(),
-      ]);
-      setTasks(taskData);
+      const [taskData, statsData] = await Promise.all([taskApi.getAll(), taskApi.getStats()]);
+      setLocalTasks(taskData);
       setStats(statsData);
-      setDemoMode(false);
+      setError(null);
     } catch {
-      // Backend unreachable — switch to demo mode with local data
-      setDemoMode(true);
-      const filtered = filterLocalTasks(localTasks);
-      setTasks(filtered);
-      setStats(computeStats(localTasks));
-      setError(null); // no error shown — demo mode is transparent
+      setError('Failed to refresh tasks.');
     } finally {
       setLoading(false);
     }
-  }, [buildParams, filterLocalTasks, localTasks]);
+  }, []);
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+  // ─────────────────────────────────────────────
+  // CRUD — work on localTasks directly (both modes)
+  // ─────────────────────────────────────────────
 
-  // When in demo mode, re-filter whenever filters change
-  useEffect(() => {
-    if (demoMode) {
-      setTasks(filterLocalTasks(localTasks));
-    }
-  }, [demoMode, filters, localTasks, filterLocalTasks]);
-
-  /* ── Live API operations ── */
-  const createTask = async (payload: CreateTaskDTO): Promise<Task> => {
-    if (demoMode) {
+  const createTask = useCallback(async (payload: CreateTaskDTO): Promise<Task> => {
+    if (demoModeRef.current) {
       const now = new Date().toISOString();
       const task: Task = {
         id: crypto.randomUUID(),
@@ -117,12 +128,12 @@ export const useTasks = (filters: FilterState) => {
       return task;
     }
     const task = await taskApi.create(payload);
-    await fetchTasks();
+    setLocalTasks((prev) => [task, ...prev]);
     return task;
-  };
+  }, []);
 
-  const updateTask = async (id: string, payload: UpdateTaskDTO): Promise<Task> => {
-    if (demoMode) {
+  const updateTask = useCallback(async (id: string, payload: UpdateTaskDTO): Promise<Task> => {
+    if (demoModeRef.current) {
       let updated!: Task;
       setLocalTasks((prev) =>
         prev.map((t) => {
@@ -134,35 +145,41 @@ export const useTasks = (filters: FilterState) => {
       return updated;
     }
     const task = await taskApi.update(id, payload);
-    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
-    await taskApi.getStats().then(setStats);
+    setLocalTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
     return task;
-  };
+  }, []);
 
-  const updateStatus = async (id: string, status: string): Promise<void> => {
-    if (demoMode) {
-      setLocalTasks((prev) =>
-        prev.map((t) => t.id === id ? { ...t, status: status as Task['status'], updatedAt: new Date().toISOString() } : t)
-      );
-      return;
+  const updateStatus = useCallback(async (id: string, status: string): Promise<void> => {
+    // Optimistic update first
+    setLocalTasks((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, status: status as Task['status'], updatedAt: new Date().toISOString() } : t
+      )
+    );
+    if (!demoModeRef.current) {
+      try {
+        const task = await taskApi.updateStatus(id, status);
+        setLocalTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
+      } catch {
+        // revert would go here; for now just refetch
+        await refetch();
+      }
     }
-    const task = await taskApi.updateStatus(id, status);
-    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
-    await taskApi.getStats().then(setStats);
-  };
+  }, [refetch]);
 
-  const deleteTask = async (id: string): Promise<void> => {
-    if (demoMode) {
-      setLocalTasks((prev) => prev.filter((t) => t.id !== id));
-      return;
+  const deleteTask = useCallback(async (id: string): Promise<void> => {
+    setLocalTasks((prev) => prev.filter((t) => t.id !== id));
+    if (!demoModeRef.current) {
+      try {
+        await taskApi.delete(id);
+      } catch {
+        await refetch();
+      }
     }
-    await taskApi.delete(id);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    await taskApi.getStats().then(setStats);
-  };
+  }, [refetch]);
 
-  const addSubtask = async (taskId: string, title: string): Promise<void> => {
-    if (demoMode) {
+  const addSubtask = useCallback(async (taskId: string, title: string): Promise<void> => {
+    if (demoModeRef.current) {
       const subtask = { id: crypto.randomUUID(), title, completed: false, createdAt: new Date().toISOString() };
       setLocalTasks((prev) =>
         prev.map((t) => t.id === taskId ? { ...t, subtasks: [...t.subtasks, subtask] } : t)
@@ -170,44 +187,45 @@ export const useTasks = (filters: FilterState) => {
       return;
     }
     const task = await taskApi.addSubtask(taskId, title);
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
-  };
+    setLocalTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
+  }, []);
 
-  const toggleSubtask = async (taskId: string, subtaskId: string): Promise<void> => {
-    if (demoMode) {
-      setLocalTasks((prev) =>
-        prev.map((t) =>
-          t.id !== taskId ? t : {
-            ...t,
-            subtasks: t.subtasks.map((s) => s.id === subtaskId ? { ...s, completed: !s.completed } : s),
-          }
-        )
-      );
-      return;
+  const toggleSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<void> => {
+    // Optimistic
+    setLocalTasks((prev) =>
+      prev.map((t) =>
+        t.id !== taskId ? t : {
+          ...t,
+          subtasks: t.subtasks.map((s) =>
+            s.id === subtaskId ? { ...s, completed: !s.completed } : s
+          ),
+        }
+      )
+    );
+    if (!demoModeRef.current) {
+      try {
+        const task = await taskApi.toggleSubtask(taskId, subtaskId);
+        setLocalTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
+      } catch {
+        await refetch();
+      }
     }
-    const task = await taskApi.toggleSubtask(taskId, subtaskId);
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
-  };
+  }, [refetch]);
 
-  const deleteSubtask = async (taskId: string, subtaskId: string): Promise<void> => {
-    if (demoMode) {
-      setLocalTasks((prev) =>
-        prev.map((t) =>
-          t.id !== taskId ? t : { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) }
-        )
-      );
-      return;
+  const deleteSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<void> => {
+    setLocalTasks((prev) =>
+      prev.map((t) =>
+        t.id !== taskId ? t : { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) }
+      )
+    );
+    if (!demoModeRef.current) {
+      try {
+        await taskApi.deleteSubtask(taskId, subtaskId);
+      } catch {
+        await refetch();
+      }
     }
-    const task = await taskApi.deleteSubtask(taskId, subtaskId);
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
-  };
-
-  // Keep stats in sync with localTasks when in demo mode
-  useEffect(() => {
-    if (demoMode) {
-      setStats(computeStats(localTasks));
-    }
-  }, [demoMode, localTasks]);
+  }, [refetch]);
 
   return {
     tasks,
@@ -215,7 +233,7 @@ export const useTasks = (filters: FilterState) => {
     loading,
     error,
     demoMode,
-    refetch: fetchTasks,
+    refetch,
     createTask,
     updateTask,
     updateStatus,

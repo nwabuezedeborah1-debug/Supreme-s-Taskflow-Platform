@@ -4,8 +4,7 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "echo skip",
   "framework": null,
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }

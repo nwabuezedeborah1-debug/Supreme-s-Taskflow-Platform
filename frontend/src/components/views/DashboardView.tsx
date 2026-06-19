@@ -43,7 +43,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ stats, tasks, onVi
             className="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#f5c518] text-black rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#e5b608] transition-colors flex-shrink-0"
           >
             <Zap size={14} />
-            <span className="hidden xs:inline sm:inline">New Task</span>
+            <span className="hidden sm:inline">New Task</span>
           </button>
         </div>
       </div>
@@ -162,7 +162,7 @@ const MiniTaskRow: React.FC<{
         {task.title}
       </span>
       {overdue && task.dueDate && (
-        <span className="text-xs text-red-400 flex-shrink-0 hidden xs:block">{formatDueDate(task.dueDate)}</span>
+        <span className="text-xs text-red-400 flex-shrink-0 hidden sm:block">{formatDueDate(task.dueDate)}</span>
       )}
       {showDate && (
         <span className="text-xs text-gray-600 flex-shrink-0">

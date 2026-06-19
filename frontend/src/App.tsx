@@ -1,38 +1,39 @@
-import React, { useState, useCallback } from 'react';
-import { Sidebar } from './components/layout/Sidebar';
-import { Header } from './components/layout/Header';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Sidebar }       from './components/layout/Sidebar';
+import { Header }        from './components/layout/Header';
 import { DashboardView } from './components/views/DashboardView';
-import { BoardView } from './components/views/BoardView';
-import { ListView } from './components/views/ListView';
-import { CalendarView } from './components/views/CalendarView';
-import { TagsView } from './components/views/TagsView';
-import { Modal } from './components/ui/Modal';
-import { TaskForm } from './components/tasks/TaskForm';
-import { TaskDetail } from './components/tasks/TaskDetail';
-import { useTasks } from './hooks/useTasks';
+import { BoardView }     from './components/views/BoardView';
+import { ListView }      from './components/views/ListView';
+import { CalendarView }  from './components/views/CalendarView';
+import { TagsView }      from './components/views/TagsView';
+import { Modal }         from './components/ui/Modal';
+import { TaskForm }      from './components/tasks/TaskForm';
+import { TaskDetail }    from './components/tasks/TaskDetail';
+import { useTasks }      from './hooks/useTasks';
 import type { Task, FilterState, Status, CreateTaskDTO, UpdateTaskDTO } from './types.ts';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
-const defaultFilters: FilterState = {
-  status: 'all',
+const DEFAULT_FILTERS: FilterState = {
+  status:   'all',
   priority: 'all',
   category: 'all',
-  search: '',
-  sortBy: 'createdAt',
-  order: 'desc',
+  search:   '',
+  sortBy:   'createdAt',
+  order:    'desc',
 };
 
-function App() {
-  const [filters, setFilters] = useState<FilterState>(defaultFilters);
-  const [activeView, setActiveView] = useState('dashboard');
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+export default function App() {
+  const [filters,     setFilters]     = useState<FilterState>(DEFAULT_FILTERS);
+  const [activeView,  setActiveView]  = useState('dashboard');
+  const [viewMode,    setViewMode]    = useState<'board' | 'list'>('board');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [createModal, setCreateModal] = useState(false);
-  const [editModal, setEditModal] = useState(false);
-  const [detailModal, setDetailModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [defaultStatus, setDefaultStatus] = useState<Status>('todo');
+  // Modal state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedTask,   setSelectedTask]   = useState<Task | null>(null);
+  const [defaultStatus,  setDefaultStatus]  = useState<Status>('todo');
 
   const {
     tasks, stats, loading, error, demoMode, refetch,
@@ -40,84 +41,77 @@ function App() {
     deleteTask, addSubtask, toggleSubtask, deleteSubtask,
   } = useTasks(filters);
 
+  // Keep selectedTask in sync with live task list
+  useEffect(() => {
+    if (!selectedTask) return;
+    const live = tasks.find((t) => t.id === selectedTask.id);
+    if (live) setSelectedTask(live);
+  }, [tasks]); // intentionally omit selectedTask to avoid loop
+
+  /* ── Handlers ── */
+
   const handleFilterChange = useCallback((partial: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  const handleNewTask = useCallback((status?: Status) => {
+  const openNewTask = useCallback((status?: Status) => {
     setDefaultStatus(status || 'todo');
-    setCreateModal(true);
+    setCreateOpen(true);
   }, []);
 
-  const handleEdit = useCallback((task: Task) => {
+  const openEdit = useCallback((task: Task) => {
     setSelectedTask(task);
-    setDetailModal(false);
-    setEditModal(true);
+    setDetailOpen(false);
+    setEditOpen(true);
   }, []);
 
-  const handleView = useCallback((task: Task) => {
+  const openDetail = useCallback((task: Task) => {
     setSelectedTask(task);
-    setDetailModal(true);
+    setDetailOpen(true);
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!window.confirm('Delete this task? This cannot be undone.')) return;
     await deleteTask(id);
-    setDetailModal(false);
+    setDetailOpen(false);
+    setEditOpen(false);
     setSelectedTask(null);
   }, [deleteTask]);
 
   const handleStatusChange = useCallback(async (id: string, status: Status) => {
     await updateStatus(id, status);
-    if (selectedTask?.id === id) {
-      setSelectedTask((prev) => prev ? { ...prev, status } : null);
-    }
-  }, [updateStatus, selectedTask]);
+  }, [updateStatus]);
 
   const handleCreateSubmit = async (data: CreateTaskDTO | UpdateTaskDTO) => {
     await createTask({ ...data, status: defaultStatus } as CreateTaskDTO);
-    setCreateModal(false);
+    setCreateOpen(false);
   };
 
   const handleEditSubmit = async (data: CreateTaskDTO | UpdateTaskDTO) => {
     if (!selectedTask) return;
-    const updated = await updateTask(selectedTask.id, data as UpdateTaskDTO);
-    setSelectedTask(updated);
-    setEditModal(false);
+    await updateTask(selectedTask.id, data as UpdateTaskDTO);
+    setEditOpen(false);
   };
 
   const handleAddSubtask = async (title: string) => {
     if (!selectedTask) return;
     await addSubtask(selectedTask.id, title);
-    refetch();
-    const taskFromList = tasks.find((t) => t.id === selectedTask.id);
-    if (taskFromList) setSelectedTask(taskFromList);
+    // selectedTask will update via the useEffect above
   };
 
   const handleToggleSubtask = async (subtaskId: string) => {
     if (!selectedTask) return;
     await toggleSubtask(selectedTask.id, subtaskId);
-    setSelectedTask((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        subtasks: prev.subtasks.map((s) =>
-          s.id === subtaskId ? { ...s, completed: !s.completed } : s
-        ),
-      };
-    });
   };
 
   const handleDeleteSubtask = async (subtaskId: string) => {
     if (!selectedTask) return;
     await deleteSubtask(selectedTask.id, subtaskId);
-    setSelectedTask((prev) => {
-      if (!prev) return null;
-      return { ...prev, subtasks: prev.subtasks.filter((s) => s.id !== subtaskId) };
-    });
   };
 
-  const renderMainView = () => {
+  /* ── View renderer ── */
+
+  const renderView = () => {
     if (loading) {
       return (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -126,7 +120,6 @@ function App() {
         </div>
       );
     }
-
     if (error) {
       return (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -149,33 +142,31 @@ function App() {
 
     switch (activeView) {
       case 'dashboard':
-        return <DashboardView stats={stats} tasks={tasks} onViewTask={handleView} onNewTask={() => handleNewTask()} />;
+        return <DashboardView stats={stats} tasks={tasks} onViewTask={openDetail} onNewTask={() => openNewTask()} />;
       case 'board':
-        return viewMode === 'board' ? (
-          <BoardView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} onNewTask={handleNewTask} />
-        ) : (
-          <ListView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} />
-        );
+        return viewMode === 'board'
+          ? <BoardView  tasks={tasks} onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={openDetail} onNewTask={openNewTask} />
+          : <ListView   tasks={tasks} onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={openDetail} />;
       case 'list':
-        return <ListView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} />;
+        return <ListView  tasks={tasks} onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={openDetail} />;
       case 'calendar':
-        return <CalendarView tasks={tasks} onViewTask={handleView} />;
+        return <CalendarView tasks={tasks} onViewTask={openDetail} />;
       case 'tags':
-        return <TagsView tasks={tasks} onViewTask={handleView} />;
+        return <TagsView tasks={tasks} onViewTask={openDetail} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-64 text-gray-600">
-            <span className="text-5xl mb-4">🚧</span>
-            <p className="text-lg font-semibold text-gray-500">Coming Soon</p>
+            <span className="text-4xl mb-4">🚧</span>
+            <p className="text-base font-semibold text-gray-500">Coming Soon</p>
             <p className="text-sm mt-1">This section is under construction</p>
           </div>
         );
     }
   };
 
+  /* ── Render ── */
   return (
     <div className="flex h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Sidebar — drawer on mobile, static on desktop */}
       <Sidebar
         stats={stats}
         activeView={activeView}
@@ -184,12 +175,11 @@ function App() {
         onMobileClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header
           filters={filters}
           onFilterChange={handleFilterChange}
-          onNewTask={() => handleNewTask()}
+          onNewTask={() => openNewTask()}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           activeView={activeView}
@@ -197,37 +187,47 @@ function App() {
         />
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Demo mode banner */}
           {demoMode && (
-            <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-[#f5c518]/10 border border-[#f5c518]/30 rounded-xl text-sm">
-              <span className="text-[#f5c518] text-lg flex-shrink-0">⚡</span>
+            <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-[#f5c518]/10 border border-[#f5c518]/30 rounded-xl">
+              <span className="text-[#f5c518] text-base flex-shrink-0 mt-0.5">⚡</span>
               <div>
-                <span className="font-semibold text-[#f5c518]">Demo Mode</span>
-                <span className="text-gray-400 ml-1 text-xs">— Backend not connected. Changes reset on refresh.</span>
+                <span className="text-sm font-semibold text-[#f5c518]">Demo Mode</span>
+                <span className="text-xs text-gray-400 ml-1.5">— Backend not connected. Changes reset on refresh.</span>
               </div>
             </div>
           )}
-          {renderMainView()}
+          {renderView()}
         </main>
       </div>
 
-      {/* Modals */}
-      <Modal open={createModal} onClose={() => setCreateModal(false)} title="Create New Task" size="lg">
-        <TaskForm onSubmit={handleCreateSubmit} onCancel={() => setCreateModal(false)} />
+      {/* ── Modals ── */}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create New Task" size="lg">
+        <TaskForm
+          onSubmit={handleCreateSubmit}
+          onCancel={() => setCreateOpen(false)}
+        />
       </Modal>
 
-      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit Task" size="lg">
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Task" size="lg">
         {selectedTask && (
-          <TaskForm task={selectedTask} onSubmit={handleEditSubmit} onCancel={() => setEditModal(false)} />
+          <TaskForm
+            key={selectedTask.id}
+            task={selectedTask}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setEditOpen(false)}
+          />
         )}
       </Modal>
 
-      <Modal open={detailModal} onClose={() => setDetailModal(false)} title="Task Details" size="lg">
+      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="Task Details" size="lg">
         {selectedTask && (
           <TaskDetail
+            key={selectedTask.id}
             task={selectedTask}
-            onEdit={() => handleEdit(selectedTask)}
+            onEdit={() => openEdit(selectedTask)}
             onDelete={() => handleDelete(selectedTask.id)}
-            onStatusChange={(status) => handleStatusChange(selectedTask.id, status)}
+            onStatusChange={(s) => handleStatusChange(selectedTask.id, s)}
             onAddSubtask={handleAddSubtask}
             onToggleSubtask={handleToggleSubtask}
             onDeleteSubtask={handleDeleteSubtask}
@@ -237,5 +237,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
