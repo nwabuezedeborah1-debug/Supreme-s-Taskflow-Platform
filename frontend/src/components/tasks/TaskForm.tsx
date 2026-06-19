@@ -69,9 +69,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSubmit, onCancel }) 
         assignee: form.assignee.trim() || null,
         tags: form.tags,
       });
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
+      // If onSubmit resolves without throwing, we're done — parent will close the modal
+    } catch (err) {
+      console.error('TaskForm submit error:', err);
+      // Only show error if parent explicitly threw — not for API fallbacks
+      setError('Could not save task. Please try again.');
       setLoading(false);
     }
   };

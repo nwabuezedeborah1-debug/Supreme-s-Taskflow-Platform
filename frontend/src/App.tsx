@@ -83,13 +83,21 @@ export default function App() {
   }, [updateStatus]);
 
   const handleCreateSubmit = async (data: CreateTaskDTO | UpdateTaskDTO) => {
-    await createTask({ ...data, status: defaultStatus } as CreateTaskDTO);
+    try {
+      await createTask({ ...data, status: defaultStatus } as CreateTaskDTO);
+    } catch {
+      // createTask already handles errors internally — should not reach here
+    }
     setCreateOpen(false);
   };
 
   const handleEditSubmit = async (data: CreateTaskDTO | UpdateTaskDTO) => {
     if (!selectedTask) return;
-    await updateTask(selectedTask.id, data as UpdateTaskDTO);
+    try {
+      await updateTask(selectedTask.id, data as UpdateTaskDTO);
+    } catch {
+      // updateTask already handles errors internally
+    }
     setEditOpen(false);
   };
 

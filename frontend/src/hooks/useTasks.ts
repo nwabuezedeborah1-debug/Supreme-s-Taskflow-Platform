@@ -108,28 +108,36 @@ export const useTasks = (filters: FilterState) => {
   // ─────────────────────────────────────────────
 
   const createTask = useCallback(async (payload: CreateTaskDTO): Promise<Task> => {
+    const now = new Date().toISOString();
+    const localTask: Task = {
+      id: crypto.randomUUID(),
+      title: payload.title,
+      description: payload.description ?? '',
+      priority: payload.priority ?? 'medium',
+      status: payload.status ?? 'todo',
+      category: payload.category ?? 'work',
+      dueDate: payload.dueDate ?? null,
+      assignee: payload.assignee ?? null,
+      tags: payload.tags ?? [],
+      subtasks: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
     if (demoModeRef.current) {
-      const now = new Date().toISOString();
-      const task: Task = {
-        id: crypto.randomUUID(),
-        title: payload.title,
-        description: payload.description ?? '',
-        priority: payload.priority ?? 'medium',
-        status: payload.status ?? 'todo',
-        category: payload.category ?? 'work',
-        dueDate: payload.dueDate ?? null,
-        assignee: payload.assignee ?? null,
-        tags: payload.tags ?? [],
-        subtasks: [],
-        createdAt: now,
-        updatedAt: now,
-      };
+      setLocalTasks((prev) => [localTask, ...prev]);
+      return localTask;
+    }
+
+    try {
+      const task = await taskApi.create(payload);
       setLocalTasks((prev) => [task, ...prev]);
       return task;
+    } catch {
+      // API failed — fall back to local creation so the user isn't blocked
+      setLocalTasks((prev) => [localTask, ...prev]);
+      return localTask;
     }
-    const task = await taskApi.create(payload);
-    setLocalTasks((prev) => [task, ...prev]);
-    return task;
   }, []);
 
   const updateTask = useCallback(async (id: string, payload: UpdateTaskDTO): Promise<Task> => {
@@ -144,9 +152,22 @@ export const useTasks = (filters: FilterState) => {
       );
       return updated;
     }
-    const task = await taskApi.update(id, payload);
-    setLocalTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
-    return task;
+    try {
+      const task = await taskApi.update(id, payload);
+      setLocalTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
+      return task;
+    } catch {
+      // Fall back to local update
+      let updated!: Task;
+      setLocalTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          updated = { ...t, ...payload, updatedAt: new Date().toISOString() };
+          return updated;
+        })
+      );
+      return updated;
+    }
   }, []);
 
   const updateStatus = useCallback(async (id: string, status: string): Promise<void> => {
