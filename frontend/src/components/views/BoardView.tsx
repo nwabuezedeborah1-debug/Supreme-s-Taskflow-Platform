@@ -24,12 +24,26 @@ export const BoardView: React.FC<BoardViewProps> = ({
   tasks, onEdit, onDelete, onStatusChange, onView, onNewTask
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 h-full">
+    /*
+      On mobile: horizontal scroll with fixed-width columns (w-72)
+      On sm+: 2-col grid
+      On xl+: 4-col grid
+    */
+    <div className="
+      flex gap-4 overflow-x-auto pb-4 -mx-4 px-4
+      sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:mx-0 sm:px-0
+      xl:grid-cols-4
+      snap-x snap-mandatory sm:snap-none
+    ">
       {columns.map(({ status, color }) => {
         const columnTasks = tasks.filter((t) => t.status === status);
         const cfg = statusConfig[status];
+
         return (
-          <div key={status} className="flex flex-col min-h-0">
+          <div
+            key={status}
+            className="flex flex-col flex-shrink-0 w-72 sm:w-auto snap-start"
+          >
             {/* Column header */}
             <div className={`bg-[#111118] border border-[#2a2a38] border-t-2 ${color} rounded-t-xl px-4 py-3 flex items-center justify-between`}>
               <div className="flex items-center gap-2">
@@ -48,7 +62,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
             </div>
 
             {/* Task list */}
-            <div className="flex-1 bg-[#0d0d15] border-x border-b border-[#2a2a38] rounded-b-xl p-3 space-y-3 overflow-y-auto min-h-[200px]">
+            <div className="flex-1 bg-[#0d0d15] border-x border-b border-[#2a2a38] rounded-b-xl p-3 space-y-3 overflow-y-auto min-h-[200px] max-h-[calc(100vh-220px)]">
               {columnTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-24 text-gray-700 text-xs text-center">
                   <span className="text-2xl mb-1">🗂</span>

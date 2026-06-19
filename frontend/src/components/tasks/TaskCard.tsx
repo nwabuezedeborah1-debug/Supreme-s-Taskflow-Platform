@@ -67,7 +67,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         >
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#2a2a38] transition-colors opacity-0 group-hover:opacity-100"
+            className="p-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#2a2a38] transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             aria-label="Task options"
           >
             <MoreVertical size={15} />

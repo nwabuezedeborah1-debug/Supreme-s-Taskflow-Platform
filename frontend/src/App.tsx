@@ -26,8 +26,8 @@ function App() {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [activeView, setActiveView] = useState('dashboard');
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Modal states
   const [createModal, setCreateModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
@@ -88,19 +88,15 @@ function App() {
 
   const handleAddSubtask = async (title: string) => {
     if (!selectedTask) return;
-    const updated = await addSubtask(selectedTask.id, title) as unknown as Task;
-    // refresh selected task from tasks list after state update
+    await addSubtask(selectedTask.id, title);
     refetch();
-    setSelectedTask((prev) => prev ? { ...prev } : null);
-    // Let's just refetch and close won't happen
-    const taskFromApi = tasks.find((t) => t.id === selectedTask.id);
-    if (taskFromApi) setSelectedTask(taskFromApi);
+    const taskFromList = tasks.find((t) => t.id === selectedTask.id);
+    if (taskFromList) setSelectedTask(taskFromList);
   };
 
   const handleToggleSubtask = async (subtaskId: string) => {
     if (!selectedTask) return;
     await toggleSubtask(selectedTask.id, subtaskId);
-    // update local selected task
     setSelectedTask((prev) => {
       if (!prev) return null;
       return {
@@ -153,43 +149,15 @@ function App() {
 
     switch (activeView) {
       case 'dashboard':
-        return (
-          <DashboardView
-            stats={stats}
-            tasks={tasks}
-            onViewTask={handleView}
-            onNewTask={() => handleNewTask()}
-          />
-        );
+        return <DashboardView stats={stats} tasks={tasks} onViewTask={handleView} onNewTask={() => handleNewTask()} />;
       case 'board':
         return viewMode === 'board' ? (
-          <BoardView
-            tasks={tasks}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onView={handleView}
-            onNewTask={handleNewTask}
-          />
+          <BoardView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} onNewTask={handleNewTask} />
         ) : (
-          <ListView
-            tasks={tasks}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onView={handleView}
-          />
+          <ListView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} />
         );
       case 'list':
-        return (
-          <ListView
-            tasks={tasks}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onView={handleView}
-          />
-        );
+        return <ListView tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onView={handleView} />;
       case 'calendar':
         return <CalendarView tasks={tasks} onViewTask={handleView} />;
       case 'tags':
@@ -207,8 +175,14 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar stats={stats} activeView={activeView} onViewChange={setActiveView} />
+      {/* Sidebar — drawer on mobile, static on desktop */}
+      <Sidebar
+        stats={stats}
+        activeView={activeView}
+        onViewChange={setActiveView}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -219,15 +193,16 @@ function App() {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           activeView={activeView}
+          onMenuOpen={() => setSidebarOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {demoMode && (
-            <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-[#f5c518]/10 border border-[#f5c518]/30 rounded-xl text-sm">
-              <span className="text-[#f5c518] text-lg">⚡</span>
+            <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-[#f5c518]/10 border border-[#f5c518]/30 rounded-xl text-sm">
+              <span className="text-[#f5c518] text-lg flex-shrink-0">⚡</span>
               <div>
                 <span className="font-semibold text-[#f5c518]">Demo Mode</span>
-                <span className="text-gray-400 ml-2">— Backend not connected. All changes are local and will reset on refresh.</span>
+                <span className="text-gray-400 ml-1 text-xs">— Backend not connected. Changes reset on refresh.</span>
               </div>
             </div>
           )}
@@ -235,26 +210,17 @@ function App() {
         </main>
       </div>
 
-      {/* Create Task Modal */}
+      {/* Modals */}
       <Modal open={createModal} onClose={() => setCreateModal(false)} title="Create New Task" size="lg">
-        <TaskForm
-          onSubmit={handleCreateSubmit}
-          onCancel={() => setCreateModal(false)}
-        />
+        <TaskForm onSubmit={handleCreateSubmit} onCancel={() => setCreateModal(false)} />
       </Modal>
 
-      {/* Edit Task Modal */}
       <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit Task" size="lg">
         {selectedTask && (
-          <TaskForm
-            task={selectedTask}
-            onSubmit={handleEditSubmit}
-            onCancel={() => setEditModal(false)}
-          />
+          <TaskForm task={selectedTask} onSubmit={handleEditSubmit} onCancel={() => setEditModal(false)} />
         )}
       </Modal>
 
-      {/* Task Detail Modal */}
       <Modal open={detailModal} onClose={() => setDetailModal(false)} title="Task Details" size="lg">
         {selectedTask && (
           <TaskDetail
