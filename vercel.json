@@ -2,9 +2,9 @@
   "version": 2,
   "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
-  "installCommand": "echo skip",
+  "installCommand": "echo 'no root install needed'",
   "framework": null,
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
