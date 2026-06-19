@@ -11,6 +11,8 @@
     "build": "npm run build --prefix frontend"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "@types/node": "^26.0.0",
+    "concurrently": "^10.0.3",
+    "typescript": "^6.0.3"
   }
 }

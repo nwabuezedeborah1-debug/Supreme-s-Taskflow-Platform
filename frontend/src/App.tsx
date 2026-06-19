@@ -35,7 +35,7 @@ function App() {
   const [defaultStatus, setDefaultStatus] = useState<Status>('todo');
 
   const {
-    tasks, stats, loading, error, refetch,
+    tasks, stats, loading, error, demoMode, refetch,
     createTask, updateTask, updateStatus,
     deleteTask, addSubtask, toggleSubtask, deleteSubtask,
   } = useTasks(filters);
@@ -222,6 +222,15 @@ function App() {
         />
 
         <main className="flex-1 overflow-y-auto p-6">
+          {demoMode && (
+            <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-[#f5c518]/10 border border-[#f5c518]/30 rounded-xl text-sm">
+              <span className="text-[#f5c518] text-lg">⚡</span>
+              <div>
+                <span className="font-semibold text-[#f5c518]">Demo Mode</span>
+                <span className="text-gray-400 ml-2">— Backend not connected. All changes are local and will reset on refresh.</span>
+              </div>
+            </div>
+          )}
           {renderMainView()}
         </main>
       </div>
