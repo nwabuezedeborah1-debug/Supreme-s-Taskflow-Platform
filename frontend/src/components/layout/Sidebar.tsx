@@ -31,7 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm lg:hidden"
+          style={{ zIndex: 998 }}
           onClick={onMobileClose}
           aria-hidden="true"
         />
@@ -40,12 +41,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar panel */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-50 w-72
+          fixed top-0 left-0 h-full w-72
           bg-[#0d0d15] border-r border-[#1e1e2e] flex flex-col
           transition-transform duration-300 ease-in-out
-          lg:static lg:w-64 lg:translate-x-0 lg:z-auto lg:flex-shrink-0
+          lg:static lg:w-64 lg:translate-x-0 lg:shrink-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
+        style={{ zIndex: 999 }}
       >
         {/* Logo */}
         <div className="px-5 py-4 border-b border-[#1e1e2e] flex items-center justify-between">

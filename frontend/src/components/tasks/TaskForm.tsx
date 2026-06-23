@@ -198,8 +198,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSubmit, onCancel }) 
         )}
       </div>
 
-      {/* Actions — sticky on mobile */}
-      <div className="flex gap-3 pt-2 sticky bottom-0 bg-[#111118] pb-1">
+      {/* Actions */}
+      <div className="flex gap-3 pt-4 border-t border-[#2a2a38] mt-2">
         <button
           type="button"
           onClick={onCancel}

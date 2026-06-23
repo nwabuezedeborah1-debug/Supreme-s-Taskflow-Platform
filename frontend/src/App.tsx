@@ -174,7 +174,7 @@ export default function App() {
 
   /* ── Render ── */
   return (
-    <div className="flex h-screen bg-[#0a0a0f] overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0f]" style={{ height: '100dvh' }}>
       <Sidebar
         stats={stats}
         activeView={activeView}

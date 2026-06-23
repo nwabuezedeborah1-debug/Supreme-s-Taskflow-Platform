@@ -4,36 +4,29 @@
   :root {
     --color-bg: #0a0a0f;
     --color-surface: #111118;
-    --color-surface-2: #1a1a24;
     --color-border: #2a2a38;
     --color-yellow: #f5c518;
-    --color-blue-royal: #4169e1;
+    --color-blue: #4169e1;
   }
 
   *, *::before, *::after {
     box-sizing: border-box;
   }
 
-  html {
-    scroll-behavior: smooth;
-    /* prevent horizontal overflow on mobile */
-    overflow-x: hidden;
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
   }
 
   body {
     background-color: #0a0a0f;
     color: #e8e8f0;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    min-height: 100vh;
-    margin: 0;
-    overflow-x: hidden;
-    /* prevent iOS bounce causing layout shift */
-    overscroll-behavior: none;
   }
 
-  /* iOS tap highlight */
-  * {
-    -webkit-tap-highlight-color: transparent;
+  #root {
+    height: 100%;
   }
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -50,14 +43,20 @@
     background-clip: text;
   }
 
-  .animate-fade-in  { animation: fadeIn  0.25s ease-out; }
-  .animate-slide-up { animation: slideUp 0.3s ease-out; }
-  .animate-scale-in { animation: scaleIn 0.2s ease-out; }
-
-  /* touch-friendly tap target */
-  .tap-target { min-height: 44px; min-width: 44px; }
+  .animate-fade-in  { animation: fadeIn  0.2s ease-out both; }
+  .animate-slide-up { animation: slideUp 0.25s ease-out both; }
+  .animate-scale-in { animation: scaleIn 0.15s ease-out both; }
 }
 
-@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeIn  {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}

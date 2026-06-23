@@ -39,8 +39,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ stats, tasks, onVi
             </p>
           </div>
           <button
+            type="button"
             onClick={onNewTask}
-            className="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#f5c518] text-black rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#e5b608] transition-colors flex-shrink-0"
+            className="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#f5c518] text-black rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#e5b608] active:bg-[#d4a707] transition-colors shrink-0"
           >
             <Zap size={14} />
             <span className="hidden sm:inline">New Task</span>

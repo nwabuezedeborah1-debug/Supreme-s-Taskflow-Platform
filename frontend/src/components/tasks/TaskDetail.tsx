@@ -75,6 +75,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             const active = task.status === s;
             return (
               <button
+                type="button"
                 key={s}
                 onClick={() => onStatusChange(s)}
                 className={`
@@ -156,6 +157,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           {task.subtasks.map((subtask) => (
             <div key={subtask.id} className="flex items-center gap-3 p-3 bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] group/sub">
               <button
+                type="button"
                 onClick={() => onToggleSubtask(subtask.id)}
                 className={`flex-shrink-0 transition-colors tap-target flex items-center justify-center
                   ${subtask.completed ? 'text-green-400' : 'text-gray-600 hover:text-gray-400'}`}
@@ -166,6 +168,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 {subtask.title}
               </span>
               <button
+                type="button"
                 onClick={() => onDeleteSubtask(subtask.id)}
                 className="text-gray-600 hover:text-red-400 transition-colors p-1 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100"
               >
@@ -186,6 +189,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             className="flex-1 bg-[#0a0a0f] border border-[#2a2a38] text-gray-300 placeholder-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4169e1]/40 focus:border-[#4169e1] transition-colors"
           />
           <button
+            type="button"
             onClick={handleAddSubtask}
             disabled={addingSubtask}
             className="px-3 py-2 bg-[#1a1a24] border border-[#2a2a38] rounded-xl text-gray-300 hover:bg-[#2a2a38] transition-colors disabled:opacity-50"
@@ -198,15 +202,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       </div>
 
-      {/* Action buttons — full width, side by side */}
-      <div className="flex gap-3 pt-2 border-t border-[#2a2a38] sticky bottom-0 bg-[#111118] pb-1">
+      {/* Action buttons */}
+      <div className="flex gap-3 pt-2 border-t border-[#2a2a38]">
         <button
+          type="button"
           onClick={onDelete}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:bg-red-500/30 transition-colors"
         >
           <Trash2 size={15} /> Delete
         </button>
         <button
+          type="button"
           onClick={onEdit}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-black bg-[#f5c518] hover:bg-[#e5b608] active:bg-[#d4a707] transition-colors"
         >
